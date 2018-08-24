@@ -1,20 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.alibaba.jstorm.kafka;
 
 import backtype.storm.spout.SpoutOutputCollector;
@@ -22,120 +5,146 @@ import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.IRichSpout;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;
-import com.alibaba.jstorm.kafka.PartitionConsumer.EmitState;
+import backtype.storm.tuple.Values;
+import com.alibaba.fastjson.JSONObject;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class KafkaSpout implements IRichSpout {
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-	private static Logger LOG = LoggerFactory.getLogger(KafkaSpout.class);
+/**
+ * @author heyc
+ * @date 2018/8/24 10:30
+ */
+public class KafkaSpout<K, V> implements IRichSpout {
 
-	protected SpoutOutputCollector collector;
-	
-	private long lastUpdateMs;
-	PartitionCoordinator coordinator;
-	
-	private KafkaSpoutConfig config;
-	
-	private ZkState zkState;
-	
-	public KafkaSpout() {
-	    
-	}
-	
-	public KafkaSpout(KafkaSpoutConfig config) {
-		this.config = config;
-	}
-	
-	@Override
-	public void open(Map conf, TopologyContext context, SpoutOutputCollector collector) {
-		this.collector = collector;
-		if (this.config == null) {
-			config = new KafkaSpoutConfig();
-		}
-		config.configure(conf);
-		zkState = new ZkState(conf, config);
-		coordinator = new PartitionCoordinator(conf, config, context, zkState);
-		lastUpdateMs = System.currentTimeMillis();
-	}
+    private static final long serialVersionUID = 7472243757546572812L;
 
-	@Override
-	public void close() {
-		// TODO Auto-generated method stub
-	    zkState.close();
-	}
+    private static final Logger logger = LoggerFactory.getLogger(KafkaSpout.class);
 
-	@Override
-	public void activate() {
-		// TODO Auto-generated method stub
+    private SpoutOutputCollector collector;
 
-	}
+    private KafkaConfig kafkaConfig;
 
-	@Override
-	public void deactivate() {
-		// TODO Auto-generated method stub
-		
-	}
+    private boolean enableAutoCommit;
 
-	@Override
-	public void nextTuple() {
-		Collection<PartitionConsumer> partitionConsumers = coordinator.getPartitionConsumers();
-		for(PartitionConsumer consumer: partitionConsumers) {
-			EmitState state = consumer.emit(collector);
-			LOG.debug("====== partition "+ consumer.getPartition() + " emit message state is "+state);
-//			if(state != EmitState.EMIT_MORE) {
-//				currentPartitionIndex  = (currentPartitionIndex+1) % consumerSize;
-//			}
-//			if(state != EmitState.EMIT_NONE) {
-//				break;
-//			}
-		}
-		long now = System.currentTimeMillis();
-        if((now - lastUpdateMs) > config.offsetUpdateIntervalMs) {
-            commitState();
+    private long pollTimeout;
+
+    private long lastUpdateMs;
+
+    private long offsetUpdateIntervalMs;
+
+    private volatile Map<String, SortedSet<KafkaMessageId>> pendingOffsetsMap;
+
+    private KafkaConsumer<K, V> kafkaConsumer;
+
+    public KafkaSpout(KafkaConfig kafkaConfig) {
+        this.kafkaConfig = kafkaConfig;
+    }
+
+    public KafkaSpout(String configPath) {
+        this(new KafkaConfig(configPath));
+    }
+
+    @Override
+    public void open(final Map conf, final TopologyContext context, final SpoutOutputCollector collector) {
+        this.collector = collector;
+        this.kafkaConfig.config(conf);
+        logger.info("kafkaConsumer config: {}", kafkaConfig.toJSONString());
+        this.lastUpdateMs = System.currentTimeMillis();
+        this.enableAutoCommit = this.kafkaConfig.getBoolean(KafkaConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        this.pollTimeout = this.kafkaConfig.getLong(KafkaConfig.POLL_TIMEOUT, 100L);
+        this.offsetUpdateIntervalMs = this.kafkaConfig.getLong(KafkaConfig.OFFSET_UPDATE_INTERVALMS, 100L);
+        this.kafkaConsumer = new KafkaConsumer<K, V>(this.kafkaConfig.getProperties());
+        this.pendingOffsetsMap = new ConcurrentHashMap<String, SortedSet<KafkaMessageId>>(1000);
+        this.kafkaConsumer.subscribe(this.kafkaConfig.getTopics());
+    }
+
+    @Override
+    public void close() {
+        if (kafkaConsumer != null) {
+            kafkaConsumer.close();
         }
-        
-		
-	}
-	
-	public void commitState() {
-	    lastUpdateMs = System.currentTimeMillis();
-		for(PartitionConsumer consumer: coordinator.getPartitionConsumers()) {
-			consumer.commitState();
+    }
+
+    @Override
+    public void activate() {
+
+    }
+
+    @Override
+    public void deactivate() {
+
+    }
+
+    @Override
+    public void nextTuple() {
+        ConsumerRecords<K, V> records = kafkaConsumer.poll(pollTimeout);
+        if (records != null && !records.isEmpty()) {
+            for (ConsumerRecord<K, V> record : records) {
+                KafkaMessageId messageId = new KafkaMessageId(record.topic(), record.partition(), record.offset());
+                collector.emit(new Values(record.value()), messageId);
+            }
         }
-		
-	}
+        // commit offset
+        long now = System.currentTimeMillis();
+        if((now - lastUpdateMs) > this.offsetUpdateIntervalMs) {
+            this.commitOffset();
+        }
+    }
 
-	@Override
-	public void ack(Object msgId) {
-		KafkaMessageId messageId = (KafkaMessageId)msgId;
-		PartitionConsumer consumer = coordinator.getConsumer(messageId.getPartition());
-		consumer.ack(messageId.getOffset());
-	}
+    /**
+     * commitOffset
+     */
+    protected void commitOffset() {
+        Iterator<Map.Entry<String, SortedSet<KafkaMessageId>>> iterator = pendingOffsetsMap.entrySet().iterator();
+        while (iterator.hasNext()) {
+            SortedSet<KafkaMessageId> messageIds = iterator.next().getValue();
+            for (KafkaMessageId messageId : messageIds) {
+                Map<TopicPartition, OffsetAndMetadata> consumed = new HashMap<TopicPartition, OffsetAndMetadata>();
+                consumed.put(new TopicPartition(messageId.getTopic(), messageId.getPartition()), new OffsetAndMetadata(messageId.getOffset()));
+                this.kafkaConsumer.commitSync(consumed);
+            }
+        }
+    }
 
-	@Override
-	public void fail(Object msgId) {
-		KafkaMessageId messageId = (KafkaMessageId)msgId;
-		PartitionConsumer consumer = coordinator.getConsumer(messageId.getPartition());
-		consumer.fail(messageId.getOffset());
-	}
+    @Override
+    public void ack(final Object msgId) {
+        if (!enableAutoCommit) {
+            KafkaMessageId messageId = (KafkaMessageId)msgId;
+            String offsetKey = messageId.getTopic() + "-" + messageId.getPartition();
+            SortedSet<KafkaMessageId> sortedSet = pendingOffsetsMap.get(offsetKey);
+            if (sortedSet == null) {
+                synchronized (this) {
+                    sortedSet = pendingOffsetsMap.get(offsetKey);
+                    if (sortedSet == null) {
+                        sortedSet = new TreeSet<KafkaMessageId>();
+                        pendingOffsetsMap.put(offsetKey, sortedSet);
+                    }
+                }
+            }
+            sortedSet.add(messageId);
+        }
+    }
 
-	@Override
-	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		declarer.declare(new Fields("bytes"));
-	}
+    @Override
+    public void fail(final Object msgId) {
+        logger.error("message fail: {}", JSONObject.toJSONString(msgId));
+    }
 
-	@Override
-	public Map<String, Object> getComponentConfiguration() {
-		return null;
-	}
-	
-	
+    @Override
+    public void declareOutputFields(final OutputFieldsDeclarer declarer) {
+        declarer.declare(new Fields("bytes"));
+    }
 
+    @Override
+    public Map<String, Object> getComponentConfiguration() {
+        return null;
+    }
 }

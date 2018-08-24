@@ -1,44 +1,37 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.alibaba.jstorm.kafka;
 
-public class KafkaMessageId {
-	private int partition;
-	private long offset;
-    
-    public KafkaMessageId(int partition, long offset) {
-        this.setPartition(partition);
-        this.setOffset(offset);
+import lombok.Getter;
+import lombok.Setter;
+
+import java.io.Serializable;
+
+/**
+ * @author heyc
+ * @date 2018/8/24 14:05
+ */
+@Setter
+@Getter
+public class KafkaMessageId implements Comparable<KafkaMessageId>, Serializable{
+
+    private static final long serialVersionUID = 5356185540554465605L;
+
+    private String topic;
+
+    private int partition;
+
+    private long offset;
+
+    public KafkaMessageId() {
     }
 
-	public int getPartition() {
-		return partition;
-	}
+    public KafkaMessageId(String topic, int partition, long offset) {
+        this.topic = topic;
+        this.partition = partition;
+        this.offset = offset;
+    }
 
-	public void setPartition(int partition) {
-		this.partition = partition;
-	}
-
-	public long getOffset() {
-		return offset;
-	}
-
-	public void setOffset(long offset) {
-		this.offset = offset;
-	}
+    @Override
+    public int compareTo(final KafkaMessageId kafkaMessageId) {
+       return kafkaMessageId == null ? 1 : Long.valueOf(this.offset - kafkaMessageId.offset).intValue();
+    }
 }

@@ -1,0 +1,10 @@
+kafka:
+  topic: extract-log
+  client:
+    id: jstorm-spout
+group:
+  id: jstorm-consumer-group
+bootstrap:
+  servers: 192.168.13.252:9092,192.168.13.253:9092
+auto.offset.reset: earliest
+enable.auto.commit: false
