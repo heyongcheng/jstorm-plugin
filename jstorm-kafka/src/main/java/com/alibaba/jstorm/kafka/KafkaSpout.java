@@ -94,9 +94,6 @@ public class KafkaSpout<K, V> implements IRichSpout {
                     pendingOffset.addPendingOffsets(record.offset());
                     pendingOffset.setEmittingOffset(record.offset());
                 }
-                if (logger.isInfoEnabled()) {
-                    logger.info("receive message: {}", record.value());
-                }
                 collector.emit(new Values(record.value()), messageId);
             }
         }
@@ -126,7 +123,7 @@ public class KafkaSpout<K, V> implements IRichSpout {
                 for (PartitionPendingOffset commitedOffset : commiteds) {
                     commitedOffset.setLastCommittedOffset(commitedOffset.getCommitingOffset());
                 }
-                if (logger.isInfoEnabled()) {
+                if (logger.isDebugEnabled()) {
                     logger.debug("commit offset: {}", commiteds);
                 }
             }
