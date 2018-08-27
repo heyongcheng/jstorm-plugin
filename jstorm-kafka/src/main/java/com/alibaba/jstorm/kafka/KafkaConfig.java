@@ -6,13 +6,16 @@ import com.alibaba.jstorm.utils.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
  * @author heyc
  * @date 2018/8/24 10:46
  */
-public class KafkaConfig {
+public class KafkaConfig implements Serializable{
+
+    private static final long serialVersionUID = -5050753505318514016L;
 
     public static final String DEFAULT_TOPIC = "jstorm";
 

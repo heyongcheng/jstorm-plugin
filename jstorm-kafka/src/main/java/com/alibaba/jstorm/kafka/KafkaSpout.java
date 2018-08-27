@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author heyc
@@ -40,7 +39,7 @@ public class KafkaSpout<K, V> implements IRichSpout {
 
     private long offsetUpdateIntervalMs;
 
-    private volatile Map<String, SortedSet<KafkaMessageId>> pendingOffsetsMap;
+    private volatile PartitionPendingCoordinator partitionPendingCoordinator;
 
     private KafkaConsumer<K, V> kafkaConsumer;
 
@@ -62,7 +61,7 @@ public class KafkaSpout<K, V> implements IRichSpout {
         this.pollTimeout = this.kafkaConfig.getLong(KafkaConfig.POLL_TIMEOUT, 100L);
         this.offsetUpdateIntervalMs = this.kafkaConfig.getLong(KafkaConfig.OFFSET_UPDATE_INTERVALMS, 100L);
         this.kafkaConsumer = new KafkaConsumer<K, V>(this.kafkaConfig.getProperties());
-        this.pendingOffsetsMap = new ConcurrentHashMap<String, SortedSet<KafkaMessageId>>(1000);
+        this.partitionPendingCoordinator = new PartitionPendingCoordinator();
         this.kafkaConsumer.subscribe(this.kafkaConfig.getTopics());
     }
 
@@ -89,12 +88,20 @@ public class KafkaSpout<K, V> implements IRichSpout {
         if (records != null && !records.isEmpty()) {
             for (ConsumerRecord<K, V> record : records) {
                 KafkaMessageId messageId = new KafkaMessageId(record.topic(), record.partition(), record.offset());
+                // 添加到待提交队列
+                if (!enableAutoCommit) {
+                    PartitionPendingOffset pendingOffset = partitionPendingCoordinator.getPendingOffset(record.topic(), record.partition());
+                    pendingOffset.addPendingOffsets(record.offset());
+                    pendingOffset.setEmittingOffset(record.offset());
+                }
+                if (logger.isInfoEnabled()) {
+                    logger.info("receive message: {}", record.value());
+                }
                 collector.emit(new Values(record.value()), messageId);
             }
         }
         // commit offset
-        long now = System.currentTimeMillis();
-        if((now - lastUpdateMs) > this.offsetUpdateIntervalMs) {
+        if(!enableAutoCommit && (System.currentTimeMillis() - lastUpdateMs) > this.offsetUpdateIntervalMs) {
             this.commitOffset();
         }
     }
@@ -103,13 +110,25 @@ public class KafkaSpout<K, V> implements IRichSpout {
      * commitOffset
      */
     protected void commitOffset() {
-        Iterator<Map.Entry<String, SortedSet<KafkaMessageId>>> iterator = pendingOffsetsMap.entrySet().iterator();
-        while (iterator.hasNext()) {
-            SortedSet<KafkaMessageId> messageIds = iterator.next().getValue();
-            for (KafkaMessageId messageId : messageIds) {
-                Map<TopicPartition, OffsetAndMetadata> consumed = new HashMap<TopicPartition, OffsetAndMetadata>();
-                consumed.put(new TopicPartition(messageId.getTopic(), messageId.getPartition()), new OffsetAndMetadata(messageId.getOffset()));
+        lastUpdateMs = System.currentTimeMillis();
+        Collection<PartitionPendingOffset> partitionPendingOffsets = partitionPendingCoordinator.getPendingOffsetMap().values();
+        if (!partitionPendingOffsets.isEmpty()) {
+            List<PartitionPendingOffset> commiteds = new ArrayList<PartitionPendingOffset>();
+            Map<TopicPartition, OffsetAndMetadata> consumed = new HashMap<TopicPartition, OffsetAndMetadata>();
+            for (PartitionPendingOffset partitionPendingOffset : partitionPendingOffsets) {
+                if (partitionPendingOffset.getCommitingOffset() != partitionPendingOffset.getLastCommittedOffset()) {
+                    commiteds.add(partitionPendingOffset);
+                    consumed.put(new TopicPartition(partitionPendingOffset.getTopic(), partitionPendingOffset.getPartition()), new OffsetAndMetadata(partitionPendingOffset.getCommitingOffset()));
+                }
+            }
+            if (!commiteds.isEmpty()) {
                 this.kafkaConsumer.commitSync(consumed);
+                for (PartitionPendingOffset commitedOffset : commiteds) {
+                    commitedOffset.setLastCommittedOffset(commitedOffset.getCommitingOffset());
+                }
+                if (logger.isInfoEnabled()) {
+                    logger.debug("commit offset: {}", commiteds);
+                }
             }
         }
     }
@@ -118,18 +137,7 @@ public class KafkaSpout<K, V> implements IRichSpout {
     public void ack(final Object msgId) {
         if (!enableAutoCommit) {
             KafkaMessageId messageId = (KafkaMessageId)msgId;
-            String offsetKey = messageId.getTopic() + "-" + messageId.getPartition();
-            SortedSet<KafkaMessageId> sortedSet = pendingOffsetsMap.get(offsetKey);
-            if (sortedSet == null) {
-                synchronized (this) {
-                    sortedSet = pendingOffsetsMap.get(offsetKey);
-                    if (sortedSet == null) {
-                        sortedSet = new TreeSet<KafkaMessageId>();
-                        pendingOffsetsMap.put(offsetKey, sortedSet);
-                    }
-                }
-            }
-            sortedSet.add(messageId);
+            partitionPendingCoordinator.getPendingOffset(messageId.getTopic(), messageId.getPartition()).remove(messageId.getOffset());
         }
     }
 
