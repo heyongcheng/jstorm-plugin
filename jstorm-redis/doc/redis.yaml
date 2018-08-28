@@ -1,0 +1,10 @@
+redis:
+  database: 4
+  password: cYVa16uXyn1dpkwbswA1
+  sentinel:
+    master: mymaster
+    nodes: 192.168.16.10:26379,192.168.16.12:26379
+  pool:
+    max-idle: 8
+    max-active: 1000
+    max-wait: 1000

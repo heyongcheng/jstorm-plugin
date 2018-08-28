@@ -1,4 +1,4 @@
-package com.alibaba.jstorm.utils;
+package com.alibaba.jstorm.common.utils;
 
 /**
  * @author heyc

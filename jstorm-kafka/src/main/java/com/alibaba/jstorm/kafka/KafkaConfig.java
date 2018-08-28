@@ -1,8 +1,8 @@
 package com.alibaba.jstorm.kafka;
 
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.jstorm.utils.ResourceUtils;
-import com.alibaba.jstorm.utils.StringUtils;
+import com.alibaba.jstorm.common.utils.ResourceUtils;
+import com.alibaba.jstorm.common.utils.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
@@ -82,7 +82,7 @@ public class KafkaConfig implements Serializable{
     }
 
     public KafkaConfig(String configPath) {
-        this(ResourceUtils.readYamlAsProperties(configPath));
+        this(ResourceUtils.readAsProperties(configPath));
     }
 
     /**

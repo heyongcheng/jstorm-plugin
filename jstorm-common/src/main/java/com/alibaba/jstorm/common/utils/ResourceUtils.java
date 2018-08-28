@@ -1,4 +1,4 @@
-package com.alibaba.jstorm.utils;
+package com.alibaba.jstorm.common.utils;
 
 import lombok.SneakyThrows;
 import shade.storm.org.yaml.snakeyaml.Yaml;
@@ -38,15 +38,31 @@ public class ResourceUtils {
     }
 
     /**
-     * readYaml
+     * readAsProperties
      * @param fileName
+     * @return
+     */
+    @SneakyThrows
+    public static Properties readAsProperties(String fileName) {
+        Reader reader = read(fileName);
+        if (fileName.endsWith(".yaml") || fileName.endsWith(".yml")) {
+            return loadYamlAsProperties(reader);
+        }
+        Properties properties = new Properties();
+        properties.load(reader);
+        return properties;
+    }
+
+
+    /**
+     * loadYaml
+     * @param reader
      * @param clazz
      * @param <T>
      * @return
      */
     @SneakyThrows
-    public static <T> T readYaml(String fileName, Class<T> clazz) {
-        Reader reader = ResourceUtils.read(fileName);
+    public static <T> T loadYaml(Reader reader, Class<T> clazz) {
         Yaml yaml = new Yaml();
         return yaml.loadAs(reader, clazz);
     }
@@ -69,8 +85,18 @@ public class ResourceUtils {
      */
     @SneakyThrows
     public static Properties readYamlAsProperties(String fileName) {
+        return loadYamlAsProperties(read(fileName));
+    }
+
+    /**
+     * loadYamlAsProperties
+     * @param reader
+     * @return
+     */
+    @SneakyThrows
+    public static Properties loadYamlAsProperties(Reader reader) {
         Properties properties = new Properties();
-        Map<String, ?> map = readYaml(fileName, Map.class);
+        Map<String, ?> map = loadYaml(reader, Map.class);
         copy(map, properties, null);
         return properties;
     }

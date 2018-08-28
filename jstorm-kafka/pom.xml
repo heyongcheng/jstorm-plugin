@@ -21,7 +21,11 @@
             <artifactId>jstorm-core</artifactId>
             <scope>provided</scope>
         </dependency>
-
+        <dependency>
+            <groupId>cn.sumpay</groupId>
+            <artifactId>jstorm-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
