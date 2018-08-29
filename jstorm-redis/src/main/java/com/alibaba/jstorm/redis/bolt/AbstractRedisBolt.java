@@ -32,7 +32,7 @@ public abstract class AbstractRedisBolt extends BaseRichBolt {
      * @param <T>
      * @return
      */
-    public static <T> T doInRedis(RedisCommand<T> command) {
+    public <T> T doInRedis(RedisCommand<T> command) {
         return RedisClient.execute(command);
     }
 
@@ -41,7 +41,7 @@ public abstract class AbstractRedisBolt extends BaseRichBolt {
      * @param key
      * @return
      */
-    public static byte[] serializeKey(String key) {
+    public byte[] serializeKey(String key) {
         return keySerialize.serialize(key);
     }
 
@@ -50,7 +50,7 @@ public abstract class AbstractRedisBolt extends BaseRichBolt {
      * @param bytes
      * @return
      */
-    public static String deserializeKey(byte[] bytes) {
+    public String deserializeKey(byte[] bytes) {
         return keySerialize.deserialize(bytes);
     }
 
@@ -59,7 +59,7 @@ public abstract class AbstractRedisBolt extends BaseRichBolt {
      * @param value
      * @return
      */
-    public static byte[] serializeValue(Object value) {
+    public byte[] serializeValue(Object value) {
         return valueSerialize.serialize(value);
     }
 
@@ -68,7 +68,7 @@ public abstract class AbstractRedisBolt extends BaseRichBolt {
      * @param bytes
      * @return
      */
-    public static Object deserializeValue(byte[] bytes) {
+    public Object deserializeValue(byte[] bytes) {
         return valueSerialize.deserialize(bytes);
     }
 
