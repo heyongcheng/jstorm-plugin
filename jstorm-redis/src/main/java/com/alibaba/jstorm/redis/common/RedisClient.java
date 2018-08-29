@@ -14,36 +14,19 @@ import redis.clients.util.Pool;
 @Slf4j
 public class RedisClient {
 
+    public static volatile boolean initialize;
+
     private static volatile Pool<Jedis> jedisPool;
-
-    /**
-     * 初始化
-     * @param configPath
-     */
-    public static void init(String configPath) {
-        init(configPath, false);
-    }
-
-    /**
-     * 初始化redis连接池
-     * @param redisConfig
-     */
-    public static void init(RedisConfig redisConfig) {
-        init(redisConfig, false);
-    }
 
     /**
      * 强制初始化
      * @param configPath
-     * @param force
      */
-    public static void init(String configPath, boolean force) {
-        if (force) {
-            reInit(new RedisConfig(ResourceUtils.readAsProperties(configPath)));
-        }
+    public static void init(String configPath) {
         if (jedisPool == null) {
             synchronized (RedisClient.class) {
                 if (jedisPool == null) {
+                    log.info("initialize redis use config path: {}", configPath);
                     reInit(new RedisConfig(ResourceUtils.readAsProperties(configPath)));
                 }
             }
@@ -53,12 +36,8 @@ public class RedisClient {
     /**
      * 强制初始化
      * @param redisConfig
-     * @param force
      */
-    public static void init(RedisConfig redisConfig, boolean force) {
-        if (force) {
-            reInit(redisConfig);
-        }
+    public static void init(RedisConfig redisConfig) {
         if (jedisPool == null) {
             synchronized (RedisClient.class) {
                 if (jedisPool == null) {
@@ -76,6 +55,7 @@ public class RedisClient {
         log.info("初始化 redis 连接池: {}", redisConfig);
         close();
         jedisPool = new JedisSentinelPool(redisConfig.getMasterName(), redisConfig.getSentinelSet(), generateJedisPoolConfig(redisConfig), redisConfig.getTimeout(), redisConfig.getPassword(), redisConfig.getDatabase());
+        initialize = true;
     }
 
     /**
