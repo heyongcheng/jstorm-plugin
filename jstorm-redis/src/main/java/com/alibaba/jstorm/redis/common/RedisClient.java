@@ -19,7 +19,7 @@ public class RedisClient {
     private static volatile Pool<Jedis> jedisPool;
 
     /**
-     * 强制初始化
+     * 初始化
      * @param configPath
      */
     public static void init(String configPath) {
@@ -34,7 +34,7 @@ public class RedisClient {
     }
 
     /**
-     * 强制初始化
+     * 初始化
      * @param redisConfig
      */
     public static void init(RedisConfig redisConfig) {
