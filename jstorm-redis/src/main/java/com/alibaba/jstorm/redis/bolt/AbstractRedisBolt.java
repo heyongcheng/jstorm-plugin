@@ -3,12 +3,10 @@ package com.alibaba.jstorm.redis.bolt;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.base.BaseRichBolt;
-import com.alibaba.jstorm.common.utils.ResourceUtils;
+import com.alibaba.jstorm.common.utils.StringUtils;
+import com.alibaba.jstorm.redis.common.RedisClient;
+import com.alibaba.jstorm.redis.common.RedisCommand;
 import com.alibaba.jstorm.redis.common.RedisConfig;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPoolConfig;
-import redis.clients.jedis.JedisSentinelPool;
-import redis.clients.util.Pool;
 
 import java.util.Map;
 
@@ -18,54 +16,49 @@ import java.util.Map;
  */
 public abstract class AbstractRedisBolt extends BaseRichBolt {
 
-    private static final long serialVersionUID = -4651952921541523320L;
+    private static final long serialVersionUID = -7294334656454951695L;
 
-    private Pool<Jedis> jedisPool;
+    private boolean forceReInit;
+
+    private String configPath;
 
     private RedisConfig redisConfig;
+
+    public AbstractRedisBolt(String configPath) {
+        this.configPath = configPath;
+    }
+
+    public AbstractRedisBolt(String configPath, boolean forceReInit) {
+        this.configPath = configPath;
+        this.forceReInit = forceReInit;
+    }
 
     public AbstractRedisBolt(RedisConfig redisConfig) {
         this.redisConfig = redisConfig;
     }
 
-    public AbstractRedisBolt(String configPath) {
-        this(new RedisConfig(ResourceUtils.readAsProperties(configPath)));
+    public AbstractRedisBolt(RedisConfig redisConfig, boolean forceReInit) {
+        this.redisConfig = redisConfig;
+        this.forceReInit = forceReInit;
     }
 
     @Override
     public void prepare(final Map stormConf, final TopologyContext context, final OutputCollector collector) {
-        this.jedisPool = this.getJedisPool(this.redisConfig);
+        if (this.redisConfig != null) {
+            RedisClient.init(redisConfig, forceReInit);
+        } else if (!StringUtils.isEmpty(this.configPath)){
+            RedisClient.init(configPath, forceReInit);
+        }
     }
 
     /**
-     * getJedisPool
-     * @param redisConfig
+     * doInRedis
+     * @param command
+     * @param <T>
      * @return
      */
-    protected Pool<Jedis> getJedisPool(RedisConfig redisConfig) {
-        return new JedisSentinelPool(redisConfig.getMasterName(), redisConfig.getSentinelSet(), this.generateJedisPoolConfig(this.redisConfig), redisConfig.getTimeout(), redisConfig.getPassword(), redisConfig.getDatabase());
+    public static <T> T doInRedis(RedisCommand<T> command) {
+        return RedisClient.execute(command);
     }
 
-    /**
-     * generateJedisPoolConfig
-     * @param redisConfig
-     * @return
-     */
-    protected JedisPoolConfig generateJedisPoolConfig(RedisConfig redisConfig) {
-        JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
-        if (redisConfig.getMinIdle() != null) {
-            jedisPoolConfig.setMinIdle(redisConfig.getMinIdle());
-        }
-        if (redisConfig.getMaxIdle() != null) {
-            jedisPoolConfig.setMaxIdle(redisConfig.getMaxIdle());
-        }
-        if (redisConfig.getMaxWait() != null) {
-            jedisPoolConfig.setMaxWaitMillis(redisConfig.getMaxWait());
-        }
-        return jedisPoolConfig;
-    }
-
-    public Jedis getJedis() {
-        return jedisPool.getResource();
-    }
 }

@@ -82,4 +82,18 @@ public class RedisConfig {
             this.maxWait = maxWaitVal;
         }
     }
+
+    @Override
+    public String toString() {
+        return "RedisConfig{" +
+                "minIdle=" + minIdle +
+                ", maxIdle=" + maxIdle +
+                ", maxWait=" + maxWait +
+                ", masterName='" + masterName + '\'' +
+                ", sentinels='" + sentinels + '\'' +
+                ", password='" + password + '\'' +
+                ", database=" + database +
+                ", timeout=" + timeout +
+                '}';
+    }
 }
