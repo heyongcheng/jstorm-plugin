@@ -18,7 +18,7 @@ public abstract class AbstractRedisBolt extends BaseRichBolt {
 
     private static final long serialVersionUID = -7294334656454951695L;
 
-    private boolean forceReInit;
+    private transient boolean forceReInit;
 
     private String configPath;
 
