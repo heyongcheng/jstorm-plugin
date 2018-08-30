@@ -57,7 +57,7 @@ public class KafkaSpout<K, V> implements IRichSpout {
         this.kafkaConfig.config(conf);
         logger.info("kafkaConsumer config: {}", kafkaConfig.toJSONString());
         this.lastUpdateMs = System.currentTimeMillis();
-        this.enableAutoCommit = this.kafkaConfig.getBoolean(KafkaConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        this.enableAutoCommit = this.kafkaConfig.getBoolean(KafkaConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
         this.pollTimeout = this.kafkaConfig.getLong(KafkaConfig.POLL_TIMEOUT, 100L);
         this.offsetUpdateIntervalMs = this.kafkaConfig.getLong(KafkaConfig.OFFSET_UPDATE_INTERVALMS, 100L);
         this.kafkaConsumer = new KafkaConsumer<K, V>(this.kafkaConfig.getProperties());
@@ -132,8 +132,15 @@ public class KafkaSpout<K, V> implements IRichSpout {
 
     @Override
     public void ack(final Object msgId) {
+        updateOffset((KafkaMessageId)msgId);
+    }
+
+    /**
+     * updateOffset
+     * @param messageId
+     */
+    protected void updateOffset(KafkaMessageId messageId) {
         if (!enableAutoCommit) {
-            KafkaMessageId messageId = (KafkaMessageId)msgId;
             partitionPendingCoordinator.getPendingOffset(messageId.getTopic(), messageId.getPartition()).remove(messageId.getOffset());
         }
     }
@@ -151,5 +158,25 @@ public class KafkaSpout<K, V> implements IRichSpout {
     @Override
     public Map<String, Object> getComponentConfiguration() {
         return null;
+    }
+
+    public boolean isEnableAutoCommit() {
+        return enableAutoCommit;
+    }
+
+    public long getPollTimeout() {
+        return pollTimeout;
+    }
+
+    public long getLastUpdateMs() {
+        return lastUpdateMs;
+    }
+
+    public long getOffsetUpdateIntervalMs() {
+        return offsetUpdateIntervalMs;
+    }
+
+    public PartitionPendingCoordinator getPartitionPendingCoordinator() {
+        return partitionPendingCoordinator;
     }
 }
