@@ -73,11 +73,11 @@ public class KafkaConfig implements Serializable{
 
     public KafkaConfig(Properties properties) {
         this.properties = properties;
-        if (!properties.containsKey(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG)) {
-            properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+        if (!this.properties.containsKey(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG)) {
+            this.properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
         }
-        if (!properties.containsKey(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG)) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+        if (!this.properties.containsKey(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG)) {
+            this.properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
         }
     }
 
@@ -96,7 +96,7 @@ public class KafkaConfig implements Serializable{
         }
         String topics = this.properties.getProperty(TOPICS_KEY);
         if (StringUtils.isNotEmpty(topics)) {
-            Arrays.asList(topics.split(";|,"));
+            return Arrays.asList(topics.split(";|,"));
         }
         return Arrays.asList(DEFAULT_TOPIC);
     }
