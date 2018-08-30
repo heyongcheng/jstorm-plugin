@@ -59,7 +59,7 @@ public class KafkaSpout<K, V> implements IRichSpout {
         this.lastUpdateMs = System.currentTimeMillis();
         this.enableAutoCommit = this.kafkaConfig.getBoolean(KafkaConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
         this.pollTimeout = this.kafkaConfig.getLong(KafkaConfig.POLL_TIMEOUT, 100L);
-        this.offsetUpdateIntervalMs = this.kafkaConfig.getLong(KafkaConfig.OFFSET_UPDATE_INTERVALMS, 100L);
+        this.offsetUpdateIntervalMs = this.kafkaConfig.getLong(KafkaConfig.OFFSET_UPDATE_INTERVALMS, 1000L);
         this.kafkaConsumer = new KafkaConsumer<K, V>(this.kafkaConfig.getProperties());
         this.partitionPendingCoordinator = new PartitionPendingCoordinator();
         this.kafkaConsumer.subscribe(this.kafkaConfig.getTopics());
@@ -87,14 +87,14 @@ public class KafkaSpout<K, V> implements IRichSpout {
         ConsumerRecords<K, V> records = kafkaConsumer.poll(pollTimeout);
         if (records != null && !records.isEmpty()) {
             for (ConsumerRecord<K, V> record : records) {
-                KafkaMessageId messageId = new KafkaMessageId(record.topic(), record.partition(), record.offset());
+                // 发送消息
+                collector.emit(new Values(record.value()), new KafkaMessageId(record.topic(), record.partition(), record.offset()));
                 // 添加到待提交队列
                 if (!enableAutoCommit) {
                     PartitionPendingOffset pendingOffset = partitionPendingCoordinator.getPendingOffset(record.topic(), record.partition());
                     pendingOffset.addPendingOffsets(record.offset());
                     pendingOffset.setEmittingOffset(record.offset());
                 }
-                collector.emit(new Values(record.value()), messageId);
             }
         }
         // commit offset
