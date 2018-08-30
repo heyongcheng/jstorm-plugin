@@ -110,18 +110,20 @@ public class KafkaSpout<K, V> implements IRichSpout {
         lastUpdateMs = System.currentTimeMillis();
         Collection<PartitionPendingOffset> partitionPendingOffsets = partitionPendingCoordinator.getPendingOffsetMap().values();
         if (!partitionPendingOffsets.isEmpty()) {
-            List<PartitionPendingOffset> commiteds = new ArrayList<PartitionPendingOffset>();
+            Map<PartitionPendingOffset, Long> commiteds = new HashMap<PartitionPendingOffset, Long>();
             Map<TopicPartition, OffsetAndMetadata> consumed = new HashMap<TopicPartition, OffsetAndMetadata>();
             for (PartitionPendingOffset partitionPendingOffset : partitionPendingOffsets) {
-                if (partitionPendingOffset.getCommitingOffset() != partitionPendingOffset.getLastCommittedOffset()) {
-                    commiteds.add(partitionPendingOffset);
-                    consumed.put(new TopicPartition(partitionPendingOffset.getTopic(), partitionPendingOffset.getPartition()), new OffsetAndMetadata(partitionPendingOffset.getCommitingOffset()));
+                // 当前需要提交的偏移量
+                long commitingOffset = partitionPendingOffset.getCommitingOffset();
+                if (commitingOffset != partitionPendingOffset.getLastCommittedOffset()) {
+                    commiteds.put(partitionPendingOffset, commitingOffset);
+                    consumed.put(new TopicPartition(partitionPendingOffset.getTopic(), partitionPendingOffset.getPartition()), new OffsetAndMetadata(commitingOffset));
                 }
             }
             if (!commiteds.isEmpty()) {
                 this.kafkaConsumer.commitSync(consumed);
-                for (PartitionPendingOffset commitedOffset : commiteds) {
-                    commitedOffset.setLastCommittedOffset(commitedOffset.getCommitingOffset());
+                for (Map.Entry<PartitionPendingOffset, Long> commitedOffset : commiteds.entrySet()) {
+                    commitedOffset.getKey().setLastCommittedOffset(commitedOffset.getValue());
                 }
                 if (logger.isDebugEnabled()) {
                     logger.debug("commit offset: {}", commiteds);
