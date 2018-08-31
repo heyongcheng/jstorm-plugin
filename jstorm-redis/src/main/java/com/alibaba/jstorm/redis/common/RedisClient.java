@@ -1,7 +1,8 @@
 package com.alibaba.jstorm.redis.common;
 
 import com.alibaba.jstorm.common.utils.ResourceUtils;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisSentinelPool;
@@ -11,8 +12,9 @@ import redis.clients.util.Pool;
  * @author heyc
  * @date 2018/8/28 15:08
  */
-@Slf4j
 public class RedisClient {
+
+    private static final Logger logger = LoggerFactory.getLogger(RedisClient.class);
 
     public static volatile boolean initialize;
 
@@ -26,7 +28,7 @@ public class RedisClient {
         if (jedisPool == null) {
             synchronized (RedisClient.class) {
                 if (jedisPool == null) {
-                    log.info("initialize redis use config path: {}", configPath);
+                    logger.info("initialize redis use config path: {}", configPath);
                     reInit(new RedisConfig(ResourceUtils.readAsProperties(configPath)));
                 }
             }
@@ -52,7 +54,7 @@ public class RedisClient {
      * @param redisConfig
      */
     protected static void reInit(RedisConfig redisConfig) {
-        log.info("初始化 redis 连接池: {}", redisConfig);
+        logger.info("初始化 redis 连接池: {}", redisConfig);
         close();
         jedisPool = new JedisSentinelPool(redisConfig.getMasterName(), redisConfig.getSentinelSet(), generateJedisPoolConfig(redisConfig), redisConfig.getTimeout(), redisConfig.getPassword(), redisConfig.getDatabase());
         initialize = true;
@@ -106,7 +108,7 @@ public class RedisClient {
     protected static void waitForJedisPoolInitialize() {
         while (jedisPool == null || jedisPool.isClosed()) {
             try {
-                log.warn("waitForJedisPoolInitialize ...");
+                logger.warn("waitForJedisPoolInitialize ...");
                 Thread.sleep(100);
             } catch (Exception e) {
             }

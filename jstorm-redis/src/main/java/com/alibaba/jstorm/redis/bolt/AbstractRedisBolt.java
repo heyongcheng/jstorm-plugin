@@ -19,10 +19,16 @@ public abstract class AbstractRedisBolt extends BaseRichBolt {
 
     private static final RedisSerialize<Object> valueSerialize = new ByteArrayRedisSerializer();
 
+    private RedisConfig redisConfig;
+
+    public AbstractRedisBolt(RedisConfig redisConfig) {
+        this.redisConfig = redisConfig;
+    }
+
     @Override
     public void prepare(final Map stormConf, final TopologyContext context, final OutputCollector collector) {
         if (!RedisClient.initialize) {
-            RedisClient.init((String)stormConf.getOrDefault("redis.config.path", "classpath:redis.yaml"));
+            RedisClient.init(redisConfig);
         }
     }
 

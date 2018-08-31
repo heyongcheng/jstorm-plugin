@@ -5,6 +5,7 @@ import com.alibaba.jstorm.common.utils.StringUtils;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.util.*;
 
 /**
@@ -13,7 +14,9 @@ import java.util.*;
  */
 @Setter
 @Getter
-public class RedisConfig {
+public class RedisConfig implements Serializable{
+
+    private static final long serialVersionUID = -8491541663904804268L;
 
     private static final String KEY_PERFIX = "redis.";
 
