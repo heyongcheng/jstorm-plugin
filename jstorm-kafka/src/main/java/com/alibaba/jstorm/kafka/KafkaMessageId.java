@@ -34,4 +34,13 @@ public class KafkaMessageId implements Comparable<KafkaMessageId>, Serializable{
     public int compareTo(final KafkaMessageId kafkaMessageId) {
        return kafkaMessageId == null ? 1 : Long.valueOf(this.offset - kafkaMessageId.offset).intValue();
     }
+
+    @Override
+    public String toString() {
+        return "KafkaMessageId{" +
+                "topic='" + topic + '\'' +
+                ", partition=" + partition +
+                ", offset=" + offset +
+                '}';
+    }
 }

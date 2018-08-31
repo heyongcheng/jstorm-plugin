@@ -12,7 +12,6 @@
     <packaging>jar</packaging>
     <properties>
         <kafka.version>0.10.1.0</kafka.version>
-        <yaml.version>1.21</yaml.version>
     </properties>
 
     <dependencies>
@@ -36,17 +35,6 @@
             <artifactId>lombok</artifactId>
             <version>1.18.2</version>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${yaml.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>fastjson</artifactId>
-            <version>1.2.49</version>
         </dependency>
     </dependencies>
 

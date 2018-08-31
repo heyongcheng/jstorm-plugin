@@ -113,9 +113,11 @@ public class RedisClient {
      */
     public <T> T execute(RedisCommand<T> command) {
         Jedis jedis = jedisPool.getResource();
-        T result = command.doInRedis(jedis);
-        jedisPool.returnResource(jedis);
-        return result;
+        try {
+            return command.doInRedis(jedis);
+        } finally {
+            jedis.close();
+        }
     }
 
 }

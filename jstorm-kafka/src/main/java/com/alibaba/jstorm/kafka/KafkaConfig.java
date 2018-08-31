@@ -1,6 +1,5 @@
 package com.alibaba.jstorm.kafka;
 
-import com.alibaba.fastjson.JSONObject;
 import com.alibaba.jstorm.common.utils.ResourceUtils;
 import com.alibaba.jstorm.common.utils.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -218,7 +217,8 @@ public class KafkaConfig implements Serializable{
         this.properties = properties;
     }
 
-    public String toJSONString() {
-        return JSONObject.toJSONString(this.properties);
+    @Override
+    public String toString() {
+        return this.properties.toString();
     }
 }

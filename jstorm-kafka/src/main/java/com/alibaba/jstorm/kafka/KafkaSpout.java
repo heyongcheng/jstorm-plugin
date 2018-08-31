@@ -6,7 +6,6 @@ import backtype.storm.topology.IRichSpout;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Values;
-import com.alibaba.fastjson.JSONObject;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -55,7 +54,7 @@ public class KafkaSpout<K, V> implements IRichSpout {
     public void open(final Map conf, final TopologyContext context, final SpoutOutputCollector collector) {
         this.collector = collector;
         this.kafkaConfig.config(conf);
-        logger.info("kafkaConsumer config: {}", kafkaConfig.toJSONString());
+        logger.info("kafkaConsumer config: {}", kafkaConfig);
         this.lastUpdateMs = System.currentTimeMillis();
         this.enableAutoCommit = this.kafkaConfig.getBoolean(KafkaConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
         this.pollTimeout = this.kafkaConfig.getLong(KafkaConfig.POLL_TIMEOUT, 100L);
@@ -149,7 +148,7 @@ public class KafkaSpout<K, V> implements IRichSpout {
 
     @Override
     public void fail(final Object msgId) {
-        logger.error("message fail: {}", JSONObject.toJSONString(msgId));
+        logger.error("message fail: {}", msgId);
     }
 
     @Override
