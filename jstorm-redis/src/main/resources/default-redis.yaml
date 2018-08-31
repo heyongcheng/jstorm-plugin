@@ -1,0 +1,9 @@
+redis:
+  database: 0
+  sentinel:
+    master: mymaster
+    nodes: 127.0.0.1:26379
+  pool:
+    max-idle: 8
+    max-active: 1000
+    max-wait: 1000
