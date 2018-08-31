@@ -16,54 +16,71 @@ public class RedisClient {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisClient.class);
 
-    public static volatile boolean initialize;
+    private static RedisClient defaultClient;
 
-    private static volatile Pool<Jedis> jedisPool;
+    private transient Pool<Jedis> jedisPool;
 
-    /**
-     * 初始化
-     * @param configPath
-     */
-    public static void init(String configPath) {
-        if (jedisPool == null) {
-            synchronized (RedisClient.class) {
-                if (jedisPool == null) {
-                    logger.info("initialize redis use config path: {}", configPath);
-                    reInit(new RedisConfig(ResourceUtils.readAsProperties(configPath)));
-                }
-            }
-        }
+    private RedisClient() {
     }
 
     /**
-     * 初始化
-     * @param redisConfig
+     * getDefault
+     * @return
      */
-    public static void init(RedisConfig redisConfig) {
-        if (jedisPool == null) {
+    public static RedisClient getDefault(RedisConfig redisConfig) {
+        if (defaultClient == null) {
             synchronized (RedisClient.class) {
-                if (jedisPool == null) {
-                    reInit(redisConfig);
+                if (defaultClient == null) {
+                    defaultClient = newInstance(redisConfig);
                 }
             }
         }
+        return defaultClient;
     }
 
     /**
-     * 初始化连接池
+     * newInstance
      * @param redisConfig
+     * @return
      */
-    protected static void reInit(RedisConfig redisConfig) {
-        logger.info("初始化 redis 连接池: {}", redisConfig);
-        close();
-        jedisPool = new JedisSentinelPool(redisConfig.getMasterName(), redisConfig.getSentinelSet(), generateJedisPoolConfig(redisConfig), redisConfig.getTimeout(), redisConfig.getPassword(), redisConfig.getDatabase());
-        initialize = true;
+    public static RedisClient newInstance(RedisConfig redisConfig) {
+        logger.info("create redis client with config: {}", redisConfig);
+        RedisClient client = new RedisClient();
+        JedisPoolConfig jedisPoolConfig = client.generateJedisPoolConfig(redisConfig);
+        client.jedisPool = new JedisSentinelPool(redisConfig.getMasterName(), redisConfig.getSentinelSet(), jedisPoolConfig, redisConfig.getTimeout(), redisConfig.getPassword(), redisConfig.getDatabase());
+        return client;
+    }
+
+    /**
+     * lookupDefaultConfigPath
+     * @return
+     */
+    public static String lookupDefaultConfigPath() {
+        if (ResourceUtils.exists("config/redis.yaml")) {
+            return "config/redis.yaml";
+        }
+        if (ResourceUtils.exists("config/redis.properties")) {
+            return "config/redis.properties";
+        }
+        if (ResourceUtils.exists("redis.yaml")) {
+            return "redis.yaml";
+        }
+        if (ResourceUtils.exists("redis.properties")) {
+            return "redis.properties";
+        }
+        if (ResourceUtils.exists("classpath:redis.yaml")) {
+            return "classpath:redis.yaml";
+        }
+        if (ResourceUtils.exists("classpath:redis.properties")) {
+            return "classpath:redis.properties";
+        }
+        return "classpath:default-redis.yaml";
     }
 
     /**
      * close
      */
-    protected static void close() {
+    protected void close() {
         if (jedisPool != null) {
             jedisPool.close();
         }
@@ -74,7 +91,7 @@ public class RedisClient {
      * @param redisConfig
      * @return
      */
-    protected static JedisPoolConfig generateJedisPoolConfig(RedisConfig redisConfig) {
+    protected JedisPoolConfig generateJedisPoolConfig(RedisConfig redisConfig) {
         JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         if (redisConfig.getMinIdle() != null) {
             jedisPoolConfig.setMinIdle(redisConfig.getMinIdle());
@@ -94,24 +111,11 @@ public class RedisClient {
      * @param <T>
      * @return
      */
-    public static <T> T execute(RedisCommand<T> command) {
-        waitForJedisPoolInitialize();
+    public <T> T execute(RedisCommand<T> command) {
         Jedis jedis = jedisPool.getResource();
         T result = command.doInRedis(jedis);
         jedisPool.returnResource(jedis);
         return result;
     }
 
-    /**
-     * 等待jedispool 加载
-     */
-    protected static void waitForJedisPoolInitialize() {
-        while (jedisPool == null || jedisPool.isClosed()) {
-            try {
-                logger.warn("waitForJedisPoolInitialize ...");
-                Thread.sleep(100);
-            } catch (Exception e) {
-            }
-        }
-    }
 }

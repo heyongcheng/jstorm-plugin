@@ -16,6 +16,19 @@ import java.util.Properties;
 public class ResourceUtils {
 
     /**
+     * exists
+     * @param fileName
+     * @return
+     */
+    public static boolean exists(String fileName) {
+        if (fileName.startsWith("classpath:")) {
+            fileName = fileName.substring("classpath:".length());
+            return null != ResourceUtils.class.getClassLoader().getResource(fileName);
+        }
+        return new File(fileName).exists();
+    }
+
+    /**
      * read
      * @param fileName
      * @return
@@ -121,10 +134,5 @@ public class ResourceUtils {
                 }
             }
         }
-    }
-
-    public static void main(String[] args) {
-        Properties properties = readYamlAsProperties("application.yaml");
-        System.out.println(properties);
     }
 }

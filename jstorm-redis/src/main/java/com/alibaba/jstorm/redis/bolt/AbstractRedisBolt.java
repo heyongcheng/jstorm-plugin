@@ -3,6 +3,7 @@ package com.alibaba.jstorm.redis.bolt;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.base.BaseRichBolt;
+import com.alibaba.jstorm.common.utils.ResourceUtils;
 import com.alibaba.jstorm.redis.common.*;
 
 import java.util.Map;
@@ -19,7 +20,16 @@ public abstract class AbstractRedisBolt extends BaseRichBolt {
 
     private static final RedisSerialize<Object> valueSerialize = new ByteArrayRedisSerializer();
 
+    private transient RedisClient redisClient;
+
     private RedisConfig redisConfig;
+
+    private RedisConfig defaultRedisConfig;
+
+    public AbstractRedisBolt() {
+        String configPath = RedisClient.lookupDefaultConfigPath();
+        defaultRedisConfig = new RedisConfig(ResourceUtils.readAsProperties(configPath));
+    }
 
     public AbstractRedisBolt(RedisConfig redisConfig) {
         this.redisConfig = redisConfig;
@@ -27,8 +37,10 @@ public abstract class AbstractRedisBolt extends BaseRichBolt {
 
     @Override
     public void prepare(final Map stormConf, final TopologyContext context, final OutputCollector collector) {
-        if (!RedisClient.initialize) {
-            RedisClient.init(redisConfig);
+        if (redisConfig == null) {
+            redisClient = RedisClient.getDefault(defaultRedisConfig);
+        } else {
+            redisClient = RedisClient.newInstance(redisConfig);
         }
     }
 
@@ -39,7 +51,7 @@ public abstract class AbstractRedisBolt extends BaseRichBolt {
      * @return
      */
     public <T> T doInRedis(RedisCommand<T> command) {
-        return RedisClient.execute(command);
+        return redisClient.execute(command);
     }
 
     /**
