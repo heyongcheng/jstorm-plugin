@@ -86,13 +86,14 @@ public class KafkaSpout<K, V> implements IRichSpout {
         ConsumerRecords<K, V> records = kafkaConsumer.poll(pollTimeout);
         if (records != null && !records.isEmpty()) {
             for (ConsumerRecord<K, V> record : records) {
-                // 发送消息
-                collector.emit(new Values(record.value()), new KafkaMessageId(record.topic(), record.partition(), record.offset()));
                 // 添加到待提交队列
                 if (!enableAutoCommit) {
                     PartitionPendingOffset pendingOffset = partitionPendingCoordinator.getPendingOffset(record.topic(), record.partition());
                     pendingOffset.addPendingOffsets(record.offset());
                     pendingOffset.setEmittingOffset(record.offset());
+                    collector.emit(new Values(record.value()), new KafkaMessageId(record.topic(), record.partition(), record.offset()));
+                } else {
+                    collector.emit(new Values(record.value()));
                 }
             }
         }
