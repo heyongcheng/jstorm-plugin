@@ -8,6 +8,9 @@ import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisSentinelPool;
 import redis.clients.util.Pool;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @author heyc
  * @date 2018/8/28 15:08
@@ -16,9 +19,21 @@ public class RedisClient {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisClient.class);
 
+    private static final List<String> defaultConfigPaths = new ArrayList<String>();
+
     private static RedisClient defaultClient;
 
     private transient Pool<Jedis> jedisPool;
+
+    static {
+        defaultConfigPaths.add("config/redis.yaml");
+        defaultConfigPaths.add("config/redis.properties");
+        defaultConfigPaths.add("redis.yaml");
+        defaultConfigPaths.add("redis.properties");
+        defaultConfigPaths.add("classpath:redis.yaml");
+        defaultConfigPaths.add("classpath:redis.properties");
+        defaultConfigPaths.add("classpath:default-redis.yaml");
+    }
 
     private RedisClient() {
     }
@@ -56,25 +71,13 @@ public class RedisClient {
      * @return
      */
     public static String lookupDefaultConfigPath() {
-        if (ResourceUtils.exists("config/redis.yaml")) {
-            return "config/redis.yaml";
+        for (String configPath : defaultConfigPaths) {
+            if (ResourceUtils.exists(configPath)) {
+                logger.info("find default redis config: {}", configPath);
+                return configPath;
+            }
         }
-        if (ResourceUtils.exists("config/redis.properties")) {
-            return "config/redis.properties";
-        }
-        if (ResourceUtils.exists("redis.yaml")) {
-            return "redis.yaml";
-        }
-        if (ResourceUtils.exists("redis.properties")) {
-            return "redis.properties";
-        }
-        if (ResourceUtils.exists("classpath:redis.yaml")) {
-            return "classpath:redis.yaml";
-        }
-        if (ResourceUtils.exists("classpath:redis.properties")) {
-            return "classpath:redis.properties";
-        }
-        return "classpath:default-redis.yaml";
+        return null;
     }
 
     /**
