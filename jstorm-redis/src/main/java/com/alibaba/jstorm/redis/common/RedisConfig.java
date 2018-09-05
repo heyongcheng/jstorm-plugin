@@ -49,6 +49,9 @@ public class RedisConfig implements Serializable{
         return set;
     }
 
+    public RedisConfig() {
+    }
+
     public RedisConfig(Properties properties) {
         this.initConfig(properties);
     }
