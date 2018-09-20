@@ -12,6 +12,7 @@
         <module>jstorm-kafka</module>
         <module>jstorm-redis</module>
         <module>jstorm-common</module>
+        <module>jstorm-hbase</module>
     </modules>
 
     <properties>
